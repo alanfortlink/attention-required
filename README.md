@@ -1,11 +1,11 @@
 # Attention Required
 
-Silence your notifications and let only the ones that matter through, loudly.
-Rules watch every notification for words and apps; a match runs effects you
-cannot miss: the MSN Messenger **nudge** that shakes the screen, a **flash**,
-a **banner**, an **airplane** towing the message, **confetti**, a **blink**, a
-**sound**, focusing the app, or a command of yours. While notifications are
-silenced, only what a rule matches gets through, toast and all.
+Match notifications to words and be actually notified when it matters.
+
+
+https://github.com/user-attachments/assets/d727da98-3df0-40a8-bbba-cf08dc0aaf6e
+
+
 
 ![Attention Required](preview.png)
 
