@@ -1,4 +1,4 @@
-# Attention Required: guide for agents
+# Attention Required: configuration reference
 
 This file is for an AI agent (or a script) asked to change how this machine
 reacts to notifications, for example "shake the screen and play a sound when

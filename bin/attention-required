@@ -13,7 +13,7 @@
 #   attention-required remove NAME
 #   attention-required enable NAME | disable NAME
 #   attention-required effects                      the effect catalog with every option and range, as JSON
-#   attention-required docs                         print the guide for scripts and agents (AGENTS.md)
+#   attention-required docs                         print the configuration reference
 #   attention-required test EFFECT                  run one effect now, e.g. `test nudge`
 #                                                   or `test '{"type":"flash","color":"urgent"}'`
 #   attention-required simulate APP SUMMARY [BODY]  run a made-up notification past the rules
@@ -149,7 +149,7 @@ case ${1:-help} in
   patch) shift; cmd_patch "$@" ;;
   remove|rm) shift; cmd_remove "$@" ;;
   effects) ipc effects | jq . ;;
-  docs) cat "$here/AGENTS.md" ;;
+  docs) cat "$here/REFERENCE.md" ;;
   enable) shift; cmd_toggle true "$@" ;;
   disable) shift; cmd_toggle false "$@" ;;
   test) [[ -n ${2:-} ]] || die "usage: test EFFECT"; ipc test "$2" ;;

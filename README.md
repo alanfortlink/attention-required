@@ -98,13 +98,11 @@ The sliders go far: a nudge can be a tremor or an earthquake, a banner can
 stay for five minutes. `attention-required effects` prints every option and
 range as JSON.
 
-## For agents and scripts
+## Reference
 
-[AGENTS.md](AGENTS.md) is the complete, exact reference: the file schema, every
+[REFERENCE.md](REFERENCE.md) is the complete reference: the file schema, every
 effect option with its range, the CLI, how to verify, and worked scenarios.
-Point your coding agent at it (`attention-required docs` prints it) and ask
-for "a red flash and a chime when the build fails" or "meeting mode: only my
-boss on Slack gets through".
+`attention-required docs` prints it.
 
 ## Command line
 
