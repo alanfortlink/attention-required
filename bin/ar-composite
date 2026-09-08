@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#
+# Temporarily turn off Hyprland direct scanout. A direct-scanned fullscreen
+# window bypasses the compositor, so it also bypasses screen shaders and
+# layer-shell overlays. Each invocation extends one shared hold and restores
+# the exact previous setting after the last visual effect is gone.
+set -uo pipefail
+
+seconds=${1:-1}
+number='^[0-9]*\.?[0-9]+$'
+[[ $seconds =~ $number ]] || seconds=1
+command -v hyprctl >/dev/null 2>&1 || exit 0
+command -v jq >/dev/null 2>&1 || exit 0
+
+runtime=${XDG_RUNTIME_DIR:-/tmp}/attention-required
+mkdir -p "$runtime" || exit 0
+state=$runtime/composite-state
+lock=$runtime/composite.lock
+
+milliseconds=$(awk -v seconds="$seconds" 'BEGIN { printf "%d", (seconds + 0.3) * 1000 }')
+now() { date +%s%3N; }
+direct_scanout() { hyprctl -j getoption render:direct_scanout 2>/dev/null | jq -r '.int // empty'; }
+set_direct_scanout() {
+  hyprctl -q eval "hl.config({ render = { direct_scanout = $1 } })" >/dev/null 2>&1 \
+    || hyprctl -q keyword render:direct_scanout "$1" >/dev/null 2>&1
+}
+
+exec 9>"$lock"
+flock 9
+
+current=$(direct_scanout)
+[[ $current =~ ^[0-2]$ ]] || exit 0
+until=$(( $(now) + milliseconds ))
+previous=$current
+if [[ -s $state ]]; then
+  IFS=$'\t' read -r saved_previous saved_until < "$state" || true
+  [[ $saved_previous =~ ^[0-2]$ ]] && previous=$saved_previous
+  [[ $saved_until =~ ^[0-9]+$ && $saved_until -gt $until ]] && until=$saved_until
+fi
+
+printf '%s\t%s\n' "$previous" "$until" > "$state"
+set_direct_scanout 0 || { rm -f "$state"; exit 0; }
+flock -u 9
+
+# Let parallel invocations extend the deadline. The final one restores the
+# setting only if nothing else has changed it in the meantime.
+sleep "$(awk -v deadline="$until" -v current="$(now)" 'BEGIN { printf "%.3f", (deadline - current) / 1000 + 0.05 }')"
+flock 9
+
+IFS=$'\t' read -r previous until < "$state" || exit 0
+[[ $until =~ ^[0-9]+$ && $(now) -ge $until ]] || exit 0
+current=$(direct_scanout)
+if [[ $current == 0 && $previous =~ ^[0-2]$ ]]; then
+  set_direct_scanout "$previous" || true
+fi
+rm -f "$state"

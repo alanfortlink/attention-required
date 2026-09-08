@@ -537,6 +537,26 @@ Item {
 
   // -------------------------------------------------------------- effects
 
+  // A direct-scanned fullscreen window bypasses Hyprland's compositor, which
+  // also bypasses our layer-shell surfaces and screen shader. Keep compositor
+  // rendering enabled just long enough for visual effects to be seen.
+  function visualEffectDuration(effect) {
+    var type = String(effect.type || "")
+    var duration = Number(effect.duration)
+    if (!isFinite(duration) || duration <= 0) duration = type === "airplane" ? 7 : 1
+    if (type === "banner") {
+      var speed = Number(effect.speed)
+      if (!isFinite(speed) || speed <= 0) speed = 4
+      return duration + 2 / speed
+    }
+    if (type === "confetti") return duration + 4.5
+    return duration
+  }
+
+  function keepCompositing(effect) {
+    Quickshell.execDetached([root.pluginDir + "/bin/ar-composite", String(visualEffectDuration(effect))])
+  }
+
   // `flash` is drawn by the shell itself (Flash.qml). Everything else is a
   // script: ~/.config/attention-required/effects/<type> if you wrote one,
   // otherwise effects/<type> shipped with the plugin.
@@ -545,11 +565,15 @@ Item {
     if (!type) return
     effect = Rules.withDefaults(root.config, effect)
     if (root.overlays[type]) {
+      root.keepCompositing(effect)
       root.overlays[type].trigger(effect, notif, rule)
       return
     }
     // The shake is a time-driven screen shader; keep frames coming while it runs.
-    if (type === "nudge") ticker.run(Number(effect.duration) > 0 ? Number(effect.duration) : 1)
+    if (type === "nudge") {
+      root.keepCompositing(effect)
+      ticker.run(Number(effect.duration) > 0 ? Number(effect.duration) : 1)
+    }
     var payload = {
       effect: effect,
       notification: {
