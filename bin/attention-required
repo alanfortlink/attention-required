@@ -9,8 +9,11 @@
 #       --effects e1,e2      nudge | flash | sound | command | your own (default: nudge)
 #       --all                every word must be present, not any
 #       --cooldown SECONDS   at most one firing per rule in this many seconds (default 3)
+#   attention-required patch NAME '{"key": value, ...}'   merge these keys into a rule (a null value removes the key)
 #   attention-required remove NAME
 #   attention-required enable NAME | disable NAME
+#   attention-required effects                      the effect catalog with every option and range, as JSON
+#   attention-required docs                         print the guide for scripts and agents (AGENTS.md)
 #   attention-required test EFFECT                  run one effect now, e.g. `test nudge`
 #                                                   or `test '{"type":"flash","color":"urgent"}'`
 #   attention-required simulate APP SUMMARY [BODY]  run a made-up notification past the rules
@@ -108,6 +111,18 @@ cmd_add() {
   ipc reload >/dev/null 2>&1 || true
 }
 
+cmd_patch() {
+  local name=${1:-} patch=${2:-}
+  [[ -n $name && -n $patch ]] || die "usage: patch NAME '{\"key\": value, ...}'"
+  jq -e 'type == "object"' <<<"$patch" >/dev/null 2>&1 || die "the patch must be a JSON object"
+  ensure_rules
+  have_rule "$name" || die "no rule named '$name'"
+  jq --arg n "$name" --argjson p "$patch" '
+    .rules = ((.rules // []) | map(if .name == $n then (. + $p | with_entries(select(.value != null))) else . end))' "$rules" | write_rules
+  echo "patched '$name'"
+  ipc reload >/dev/null 2>&1 || true
+}
+
 cmd_remove() {
   local name=${1:-}
   [[ -n $name ]] || die "usage: remove NAME"
@@ -131,7 +146,10 @@ cmd_toggle() {
 case ${1:-help} in
   list|ls) cmd_list ;;
   add) shift; cmd_add "$@" ;;
+  patch) shift; cmd_patch "$@" ;;
   remove|rm) shift; cmd_remove "$@" ;;
+  effects) ipc effects | jq . ;;
+  docs) cat "$here/AGENTS.md" ;;
   enable) shift; cmd_toggle true "$@" ;;
   disable) shift; cmd_toggle false "$@" ;;
   test) [[ -n ${2:-} ]] || die "usage: test EFFECT"; ipc test "$2" ;;

@@ -38,9 +38,9 @@ Item {
     opts = opts || {}
     text = Rules.renderTemplate(opts.text, notif, rule)
     direction = opts.direction === "rtl" ? "rtl" : "ltr"
-    size = number(opts.intensity, 1, 0.5, 3)
-    altitude = number(opts.altitude, 0.2, 0.05, 0.95)
-    flightMs = Math.round(number(opts.duration, 7, 2, 20) * 1000)
+    size = number(opts.intensity, 1, 0.2, 10)
+    altitude = number(opts.altitude, 0.2, 0, 1)
+    flightMs = Math.round(number(opts.duration, 7, 0.5, 120) * 1000)
     anim.stop()
     flight = 0
     active = true

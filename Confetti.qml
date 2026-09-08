@@ -31,10 +31,10 @@ Item {
 
   function trigger(opts, notif, rule) {
     opts = opts || {}
-    amount = number(opts.intensity, 1, 0.2, 3)
-    power = number(opts.speed, 1, 0.3, 3)
+    amount = number(opts.intensity, 1, 0.05, 20)
+    power = number(opts.speed, 1, 0.1, 10)
     style = opts.style === "rain" || opts.style === "burst" ? String(opts.style) : "cannons"
-    var seconds = number(opts.duration, 1, 0.5, 15)
+    var seconds = number(opts.duration, 1, 0.1, 60)
     active = true
     emitting = true
     stopEmit.interval = Math.round(seconds * 1000)

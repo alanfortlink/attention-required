@@ -10,9 +10,9 @@ var EFFECTS = [
     type: "nudge", label: "Nudge", icon: "󰕦",
     subtitle: "Shakes the screen, like a phone buzzing",
     rows: [
-      { key: "duration", label: "Duration", min: 0.2, max: 5, step: 0.1, fallback: 1, unit: " s" },
-      { key: "intensity", label: "Intensity", min: 0.5, max: 30, step: 0.5, fallback: 1.5, unit: "" },
-      { key: "speed", label: "Speed", min: 10, max: 400, step: 10, fallback: 200, unit: " /s" }
+      { key: "duration", label: "Duration", min: 0.1, max: 30, step: 0.1, fallback: 1, unit: " s" },
+      { key: "intensity", label: "Intensity", min: 0.1, max: 100, step: 0.1, fallback: 1.5, unit: "" },
+      { key: "speed", label: "Speed", min: 1, max: 1000, step: 1, fallback: 200, unit: " /s" }
     ],
     options: []
   },
@@ -20,10 +20,10 @@ var EFFECTS = [
     type: "flash", label: "Flash", icon: "󰉁",
     subtitle: "A glow pulses in from the edges of the screen",
     rows: [
-      { key: "duration", label: "Duration", min: 0.2, max: 10, step: 0.1, fallback: 1, unit: " s" },
-      { key: "intensity", label: "Intensity", min: 0.05, max: 1, step: 0.05, fallback: 0.9, unit: "" },
-      { key: "speed", label: "Pulses", min: 0.5, max: 12, step: 0.5, fallback: 3, unit: " /s" },
-      { key: "thickness", label: "Thickness", min: 8, max: 400, step: 8, fallback: 64, unit: " px" }
+      { key: "duration", label: "Duration", min: 0.1, max: 60, step: 0.1, fallback: 1, unit: " s" },
+      { key: "intensity", label: "Intensity", min: 0.01, max: 1, step: 0.01, fallback: 0.9, unit: "" },
+      { key: "speed", label: "Pulses", min: 0.1, max: 30, step: 0.1, fallback: 3, unit: " /s" },
+      { key: "thickness", label: "Thickness", min: 1, max: 2000, step: 1, fallback: 64, unit: " px" }
     ],
     options: [
       { key: "color", label: "Color", type: "enum", fallback: "accent",
@@ -34,9 +34,9 @@ var EFFECTS = [
     type: "banner", label: "Banner", icon: "",
     subtitle: "The message drops in as a big card",
     rows: [
-      { key: "duration", label: "Stays for", min: 0.5, max: 30, step: 0.5, fallback: 3, unit: " s" },
-      { key: "intensity", label: "Size", min: 0.5, max: 2.5, step: 0.1, fallback: 1, unit: "×" },
-      { key: "speed", label: "Slide", min: 1, max: 10, step: 0.5, fallback: 4, unit: " /s" }
+      { key: "duration", label: "Stays for", min: 0.1, max: 300, step: 0.1, fallback: 3, unit: " s" },
+      { key: "intensity", label: "Size", min: 0.2, max: 6, step: 0.1, fallback: 1, unit: "×" },
+      { key: "speed", label: "Slide", min: 0.2, max: 50, step: 0.1, fallback: 4, unit: " /s" }
     ],
     options: [
       { key: "position", label: "Position", type: "enum", fallback: "top",
@@ -50,9 +50,9 @@ var EFFECTS = [
     type: "airplane", label: "Airplane", icon: "󰀝",
     subtitle: "A plane tows the message across the screen",
     rows: [
-      { key: "duration", label: "Flight", min: 2, max: 20, step: 0.5, fallback: 7, unit: " s" },
-      { key: "intensity", label: "Size", min: 0.5, max: 3, step: 0.1, fallback: 1, unit: "×" },
-      { key: "altitude", label: "Altitude", min: 0.05, max: 0.95, step: 0.05, fallback: 0.2, unit: "" }
+      { key: "duration", label: "Flight", min: 0.5, max: 120, step: 0.1, fallback: 7, unit: " s" },
+      { key: "intensity", label: "Size", min: 0.2, max: 10, step: 0.1, fallback: 1, unit: "×" },
+      { key: "altitude", label: "Altitude", min: 0, max: 1, step: 0.01, fallback: 0.2, unit: "" }
     ],
     options: [
       { key: "direction", label: "Direction", type: "enum", fallback: "ltr",
@@ -64,9 +64,9 @@ var EFFECTS = [
     type: "confetti", label: "Confetti", icon: "",
     subtitle: "Confetti pops up across the screen",
     rows: [
-      { key: "duration", label: "Duration", min: 0.5, max: 15, step: 0.5, fallback: 1, unit: " s" },
-      { key: "intensity", label: "Amount", min: 0.2, max: 3, step: 0.1, fallback: 1, unit: "×" },
-      { key: "speed", label: "Power", min: 0.3, max: 3, step: 0.1, fallback: 1, unit: "×" }
+      { key: "duration", label: "Duration", min: 0.1, max: 60, step: 0.1, fallback: 1, unit: " s" },
+      { key: "intensity", label: "Amount", min: 0.05, max: 20, step: 0.05, fallback: 1, unit: "×" },
+      { key: "speed", label: "Power", min: 0.1, max: 10, step: 0.1, fallback: 1, unit: "×" }
     ],
     options: [
       { key: "style", label: "Comes from", type: "enum", fallback: "cannons",
@@ -77,9 +77,9 @@ var EFFECTS = [
     type: "blink", label: "Blink", icon: "󰌵",
     subtitle: "The screen dims and comes back",
     rows: [
-      { key: "duration", label: "Duration", min: 0.2, max: 5, step: 0.1, fallback: 1, unit: " s" },
-      { key: "intensity", label: "Darkness", min: 0.1, max: 1, step: 0.05, fallback: 0.6, unit: "" },
-      { key: "speed", label: "Blinks", min: 1, max: 10, step: 0.5, fallback: 2, unit: " /s" }
+      { key: "duration", label: "Duration", min: 0.1, max: 30, step: 0.1, fallback: 1, unit: " s" },
+      { key: "intensity", label: "Darkness", min: 0.01, max: 1, step: 0.01, fallback: 0.6, unit: "" },
+      { key: "speed", label: "Blinks", min: 0.2, max: 30, step: 0.1, fallback: 2, unit: " /s" }
     ],
     options: []
   },
@@ -87,8 +87,8 @@ var EFFECTS = [
     type: "sound", label: "Sound", icon: "󰕾",
     subtitle: "Plays a chime",
     rows: [
-      { key: "intensity", label: "Volume", min: 0, max: 1, step: 0.05, fallback: 1, unit: "" },
-      { key: "speed", label: "Repeat", min: 1, max: 5, step: 1, fallback: 1, unit: " ×" }
+      { key: "intensity", label: "Volume", min: 0, max: 2, step: 0.01, fallback: 1, unit: "" },
+      { key: "speed", label: "Repeat", min: 1, max: 50, step: 1, fallback: 1, unit: " ×" }
     ],
     options: [
       { key: "file", label: "File", type: "text", fallback: "", placeholder: "empty: the default chime · or a path to a sound file" }

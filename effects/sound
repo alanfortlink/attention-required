@@ -13,6 +13,7 @@ volume=${AR_OPT_INTENSITY:-${AR_OPT_VOLUME:-1}}
 times=${AR_OPT_SPEED:-${AR_OPT_REPEAT:-1}}
 [[ $volume =~ ^[0-9]*\.?[0-9]+$ ]] || volume=1
 [[ $times =~ ^[0-9]+$ ]] || times=1
+(( times > 50 )) && times=50
 file=${file/#\~/$HOME}
 
 [[ -r $file ]] || { echo "sound: cannot read $file" >&2; exit 1; }

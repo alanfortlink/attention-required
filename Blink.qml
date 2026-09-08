@@ -26,9 +26,9 @@ Item {
 
   function trigger(opts, notif, rule) {
     opts = opts || {}
-    var duration = number(opts.duration, 1, 0.2, 5)
-    var speed = number(opts.speed, 2, 1, 10)
-    darkness = number(opts.intensity, 0.6, 0.1, 1)
+    var duration = number(opts.duration, 1, 0.1, 30)
+    var speed = number(opts.speed, 2, 0.2, 30)
+    darkness = number(opts.intensity, 0.6, 0.01, 1)
     pulseMs = Math.round(1000 / speed)
     anim.stop()
     level = 0

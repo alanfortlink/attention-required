@@ -11,7 +11,7 @@
 #
 # Options (set on the effect in rules.json):
 #   duration   seconds, default 1
-#   intensity  0.5..30, how far the picture moves, default 1.5 (a phone buzz; 6 is a proper MSN nudge)
+#   intensity  0.1..100, how far the picture moves, default 1.5 (a phone buzz; 6 is a proper MSN nudge)
 #   speed      new positions per second, default 200: at or above the refresh rate every frame differs
 set -uo pipefail
 
@@ -34,7 +34,7 @@ shader=$run_dir/nudge.frag
 exec 9>"$run_dir/nudge.lock"
 flock -n 9 || exit 0
 
-amp=$(awk -v i="$intensity" 'BEGIN { printf "%.5f", (i > 30 ? 30 : i) / 1000 }')
+amp=$(awk -v i="$intensity" 'BEGIN { printf "%.5f", (i > 100 ? 100 : i) / 1000 }')
 rate=$(awk -v s="$speed" 'BEGIN { printf "%.1f", (s < 1 ? 1 : s) }')
 
 cat > "$shader" <<FRAG

@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "Rules.js" as Rules
+import "EffectCatalog.js" as Catalog
 
 // Headless service: streams every notification the shell puts on screen,
 // runs it past the rules in ~/.config/attention-required/rules.json, and
@@ -600,6 +601,11 @@ Item {
     function reload(): string {
       rulesFile.reload()
       return "reloading " + root.rulesPath
+    }
+
+    // The effect catalog with every option and its range, for scripts and agents.
+    function effects(): string {
+      return JSON.stringify(Catalog.EFFECTS)
     }
 
     // attention-required toggle | on | off

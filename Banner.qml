@@ -47,9 +47,9 @@ Item {
     title = Rules.renderTemplate(custom, notif, rule)
     body = custom ? "" : Rules.stripTags(notif ? notif.body : "")
     position = opts.position === "center" || opts.position === "bottom" ? String(opts.position) : "top"
-    size = number(opts.intensity, 1, 0.5, 2.5)
-    slideMs = Math.round(1000 / number(opts.speed, 4, 1, 10))
-    holdMs = Math.round(number(opts.duration, 3, 0.5, 30) * 1000)
+    size = number(opts.intensity, 1, 0.2, 6)
+    slideMs = Math.round(1000 / number(opts.speed, 4, 0.2, 50))
+    holdMs = Math.round(number(opts.duration, 3, 0.1, 300) * 1000)
     glow = resolveColor(opts.color)
     off.stop()
     hide.stop()

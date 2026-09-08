@@ -45,10 +45,10 @@ Item {
   function trigger(opts) {
     opts = opts || {}
     glow = resolveColor(opts.color)
-    var duration = number(opts.duration, 1, 0.1, 30)
-    var speed = number(opts.speed, 3, 0.2, 20)
-    intensity = number(opts.intensity, 0.9, 0.05, 1)
-    thickness = Math.round(number(opts.thickness, 64, 4, 600))
+    var duration = number(opts.duration, 1, 0.1, 60)
+    var speed = number(opts.speed, 3, 0.1, 30)
+    intensity = number(opts.intensity, 0.9, 0.01, 1)
+    thickness = Math.round(number(opts.thickness, 64, 1, 2000))
     pulseMs = Math.round(1000 / speed)
     pulses = Math.max(1, Math.round(duration * speed))
     anim.stop()

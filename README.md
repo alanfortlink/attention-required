@@ -94,6 +94,17 @@ that does not set the option itself.
 `color` is `accent`, `urgent`, `foreground` or any CSS color. Text templates
 take `{summary}`, `{body}`, `{app}`, `{rule}`. Your own effect is an executable
 in `~/.config/attention-required/effects/<name>` with the same environment.
+The sliders go far: a nudge can be a tremor or an earthquake, a banner can
+stay for five minutes. `attention-required effects` prints every option and
+range as JSON.
+
+## For agents and scripts
+
+[AGENTS.md](AGENTS.md) is the complete, exact reference: the file schema, every
+effect option with its range, the CLI, how to verify, and worked scenarios.
+Point your coding agent at it (`attention-required docs` prints it) and ask
+for "a red flash and a chime when the build fails" or "meeting mode: only my
+boss on Slack gets through".
 
 ## Command line
 
@@ -102,7 +113,8 @@ attention-required list | add NAME --words a,b --apps x --effects nudge,flash | 
 attention-required enable NAME | disable NAME | toggle | on | off | settings
 attention-required test banner | test '{"type":"nudge","intensity":6,"speed":15}'
 attention-required simulate "Google Chrome" "Your rider has arrived" "deliveroo.co.uk"
-attention-required set nudge intensity 6 | status | export [FILE] | import FILE | edit
+attention-required patch NAME '{"cooldown":0,"effects":[{"type":"banner","duration":10}]}'
+attention-required set nudge intensity 6 | status | effects | export [FILE] | import FILE | edit
 ./demo.sh              # a narrated tour of every effect, driven by real notifications
 ```
 
