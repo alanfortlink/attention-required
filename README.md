@@ -9,8 +9,6 @@ https://github.com/user-attachments/assets/d727da98-3df0-40a8-bbba-cf08dc0aaf6e
 
 ![Attention Required](preview.png)
 
-> Video of the demo: coming soon.
-
 > Tested on **Omarchy 4** (Arch Linux, Hyprland with the Lua config, omarchy-shell).
 
 ## Install

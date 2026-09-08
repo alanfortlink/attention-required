@@ -1,11 +1,7 @@
 {
   "version": 1,
   "whileDnd": true,
-  "defaults": {
-    "nudge": { "duration": 1, "intensity": 1.5, "speed": 200 },
-    "flash": { "duration": 1, "intensity": 0.9, "speed": 3, "thickness": 64, "color": "accent" },
-    "sound": { "intensity": 1, "speed": 1 }
-  },
+  "letThrough": true,
   "rules": [
     {
       "name": "deliveroo",

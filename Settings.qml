@@ -489,37 +489,70 @@ Panel {
           onCommitted: function(v) { if (root.svc) root.svc.updateRule(root.current, { apps: v }) }
         }
       }
+      // The rule's effects, one row each with its settings at a glance, a
+      // button to open it and one to drop it; then a button that unfolds
+      // the effects not yet on the rule.
       EditorRow {
         label: "Effects"
         Column {
+          id: effectsBox
           width: parent.width - root.trailInset
           spacing: Style.space(6)
+          property bool adding: false
+          readonly property var active: root.effectNames(root.current)
+          readonly property var available: root.catalog.filter(function(e) { return effectsBox.active.indexOf(e.type) === -1 })
+
+          Repeater {
+            model: effectsBox.active
+            delegate: EffectLine {
+              required property string modelData
+              width: effectsBox.width
+              type: modelData
+            }
+          }
+
+          Note {
+            visible: effectsBox.active.length === 0
+            text: "empty: the rule matches but nothing happens yet"
+          }
+
+          Button {
+            text: effectsBox.adding ? "Pick an effect below" : "Add effect"
+            iconText: effectsBox.adding ? "󰅀" : "󰐕"
+            bordered: true
+            focusable: true
+            enabled: effectsBox.available.length > 0
+            foreground: root.fg
+            fontFamily: root.fontFamily
+            fontSize: Style.font.bodySmall
+            onClicked: effectsBox.adding = !effectsBox.adding
+          }
+
           Flow {
+            visible: effectsBox.adding
             width: parent.width
             spacing: Style.spacing.md
             Repeater {
-              model: root.catalog
+              model: effectsBox.available
               delegate: Button {
                 required property var modelData
-                readonly property bool on: root.effectNames(root.current).indexOf(modelData.type) !== -1
                 text: modelData.label
-                iconText: on ? "󰄬" : (modelData.icon || "")
-                selected: on
+                iconText: modelData.icon || ""
                 bordered: true
                 focusable: true
                 foreground: root.fg
                 fontFamily: root.fontFamily
                 fontSize: Style.font.bodySmall
-                tooltipText: modelData.subtitle + (on ? " · click to set up" : " · click to turn on and set up")
+                tooltipText: modelData.subtitle
                 onClicked: {
                   if (!root.svc) return
-                  if (!on) root.svc.addRuleEffect(root.current, modelData.type)
+                  effectsBox.adding = false
+                  root.svc.addRuleEffect(root.current, modelData.type)
                   root.openEffect(modelData.type)
                 }
               }
             }
           }
-          Note { text: root.effectNames(root.current).length ? "Click an effect to set it up. Empty: the rule matches but nothing happens." : "empty: nothing happens yet · click an effect to turn it on and set it up" }
         }
       }
       EditorRow {
@@ -995,6 +1028,93 @@ Panel {
           }
         }
       }
+    }
+  }
+
+  // One effect on the rule: name, its settings in a line, open and remove.
+  component EffectLine: Rectangle {
+    id: line
+    property string type: ""
+    readonly property var def: Catalog.find(type)
+    height: Style.space(34)
+    radius: Style.space(6)
+    color: lineArea.containsMouse ? Util.alpha(root.fg, 0.08) : Util.alpha(root.fg, 0.04)
+
+    function summary() {
+      if (!def || !root.svc) return ""
+      var parts = []
+      for (var i = 0; i < def.rows.length && parts.length < 3; i++) {
+        var r = def.rows[i]
+        parts.push(root.fmt(root.svc.ruleEffectOption(root.current, line.type, r.key, r.fallback), r.step, r.unit))
+      }
+      return parts.join(" · ")
+    }
+
+    MouseArea {
+      id: lineArea
+      anchors.fill: parent
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
+      onClicked: root.openEffect(line.type)
+    }
+    Text {
+      id: lineIcon
+      anchors.left: parent.left
+      anchors.leftMargin: Style.space(10)
+      anchors.verticalCenter: parent.verticalCenter
+      text: line.def && line.def.icon ? line.def.icon : "󰄬"
+      color: root.fg
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      width: Style.space(18)
+    }
+    Text {
+      id: lineName
+      anchors.left: lineIcon.right
+      anchors.leftMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      text: line.def ? line.def.label : line.type
+      color: root.fg
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.body
+      font.weight: Font.DemiBold
+    }
+    Text {
+      anchors.left: lineName.right
+      anchors.leftMargin: Style.space(10)
+      anchors.right: openButton.left
+      anchors.rightMargin: Style.space(6)
+      anchors.verticalCenter: parent.verticalCenter
+      text: line.summary()
+      color: root.dim
+      font.family: root.fontFamily
+      font.pixelSize: Style.font.bodySmall
+      elide: Text.ElideRight
+    }
+    PanelActionButton {
+      id: openButton
+      anchors.right: removeButton.left
+      anchors.rightMargin: Style.space(2)
+      anchors.verticalCenter: parent.verticalCenter
+      iconText: "󰒓"
+      tooltipText: "Set up"
+      focusable: true
+      foreground: root.fg
+      fontFamily: root.fontFamily
+      onClicked: root.openEffect(line.type)
+    }
+    PanelActionButton {
+      id: removeButton
+      anchors.right: parent.right
+      anchors.rightMargin: Style.space(4)
+      anchors.verticalCenter: parent.verticalCenter
+      iconText: "󰅖"
+      tooltipText: "Remove from this rule"
+      focusable: true
+      foreground: root.fg
+      hoverColor: Color.urgent
+      fontFamily: root.fontFamily
+      onClicked: if (root.svc) root.svc.removeRuleEffect(root.current, line.type)
     }
   }
 
