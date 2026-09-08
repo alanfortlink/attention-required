@@ -395,7 +395,7 @@ Panel {
     Text {
       anchors.left: nameText.right
       anchors.leftMargin: Style.space(10)
-      anchors.right: chevron.left
+      anchors.right: deleteButton.left
       anchors.rightMargin: Style.space(8)
       anchors.verticalCenter: parent.verticalCenter
       text: root.ruleSummary(line.rule, line.ruleIndex)
@@ -419,9 +419,27 @@ Panel {
       id: lineArea
       anchors.fill: parent
       anchors.leftMargin: onSwitch.width + Style.space(6)
+      z: 1
       hoverEnabled: true
       cursorShape: Qt.PointingHandCursor
       onClicked: root.openRule(line.ruleIndex)
+    }
+    PanelActionButton {
+      id: deleteButton
+      z: 2
+      anchors.right: chevron.left
+      anchors.rightMargin: Style.space(4)
+      anchors.verticalCenter: parent.verticalCenter
+      iconText: "󰆴"
+      tooltipText: "Delete this rule"
+      focusable: true
+      foreground: root.fg
+      hoverColor: Color.urgent
+      fontFamily: root.fontFamily
+      opacity: lineArea.containsMouse || hovered ? 1 : 0.55
+      property bool hovered: false
+      onHovered: function(on) { hovered = on }
+      onClicked: root.confirmDeleteIndex = line.ruleIndex
     }
   }
 
@@ -1050,13 +1068,6 @@ Panel {
       return parts.join(" · ")
     }
 
-    MouseArea {
-      id: lineArea
-      anchors.fill: parent
-      hoverEnabled: true
-      cursorShape: Qt.PointingHandCursor
-      onClicked: root.openEffect(line.type)
-    }
     Text {
       id: lineIcon
       anchors.left: parent.left
@@ -1082,7 +1093,7 @@ Panel {
     Text {
       anchors.left: lineName.right
       anchors.leftMargin: Style.space(10)
-      anchors.right: openButton.left
+      anchors.right: removeButton.left
       anchors.rightMargin: Style.space(6)
       anchors.verticalCenter: parent.verticalCenter
       text: line.summary()
@@ -1091,20 +1102,19 @@ Panel {
       font.pixelSize: Style.font.bodySmall
       elide: Text.ElideRight
     }
-    PanelActionButton {
-      id: openButton
-      anchors.right: removeButton.left
-      anchors.rightMargin: Style.space(2)
-      anchors.verticalCenter: parent.verticalCenter
-      iconText: "󰒓"
-      tooltipText: "Set up"
-      focusable: true
-      foreground: root.fg
-      fontFamily: root.fontFamily
+    // The whole row opens the effect; above the texts so the pointer shows
+    // everywhere on it, below the remove button so that still wins.
+    MouseArea {
+      id: lineArea
+      anchors.fill: parent
+      z: 1
+      hoverEnabled: true
+      cursorShape: Qt.PointingHandCursor
       onClicked: root.openEffect(line.type)
     }
     PanelActionButton {
       id: removeButton
+      z: 2
       anchors.right: parent.right
       anchors.rightMargin: Style.space(4)
       anchors.verticalCenter: parent.verticalCenter
