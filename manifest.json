@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "alanfortlink.attention-required",
+  "name": "Attention Required",
+  "version": "0.2.0",
+  "author": "alanfortlink",
+  "license": "MIT",
+  "description": "Rules that watch every notification for words, from any app or only the apps you pick, and answer with an effect: an MSN-style nudge that shakes the screen, a flash around the edges, a sound, or a command of yours.",
+  "homepage": "https://github.com/alanfortlink/attention-required",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "Service.qml",
+    "barWidget": "Settings.qml"
+  },
+  "barWidget": {
+    "displayName": "Attention Required",
+    "description": "A bell that shows whether the effects are armed. Click it for the settings: rules, words, apps, and how strong each effect is. Right-click pauses or resumes.",
+    "category": "System",
+    "allowMultiple": false,
+    "defaultSection": "right",
+    "defaults": {},
+    "schema": []
+  }
+}

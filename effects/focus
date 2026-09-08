@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#
+# Brings the window of the app that sent the notification to the front.
+#
+# The notification only carries the app's name ("Google Chrome", "Telegram
+# Desktop"); windows carry a class ("google-chrome", "org.telegram.desktop")
+# and a title. Both are compared with everything but letters and digits
+# stripped, so "Google Chrome" finds "google-chrome". The most recently
+# focused matching window wins.
+#
+# Options (set on the effect in rules.json):
+#   window   what to look for instead of the app's name (a class or a title)
+set -uo pipefail
+
+want=${AR_OPT_WINDOW:-${AR_APP:-}}
+[[ -n $want ]] || exit 0
+command -v hyprctl >/dev/null 2>&1 || exit 1
+command -v jq >/dev/null 2>&1 || exit 1
+
+find_window() {
+  hyprctl -j clients 2>/dev/null | jq -r --arg want "$1" '
+    def key: ascii_downcase | gsub("[^a-z0-9]"; "");
+    ($want | key) as $w
+    | [ .[] | select($w != "" and (
+          ((.class // "") | key | contains($w)) or
+          ((.initialClass // "") | key | contains($w)) or
+          ((.title // "") | key | contains($w)) or
+          ((.initialTitle // "") | key | contains($w)))) ]
+    | sort_by(.focusHistoryID) | .[0].address // empty'
+}
+
+addr=$(find_window "$want")
+# "Telegram Desktop" may only match as "telegram": try the first word too.
+[[ -n $addr ]] || addr=$(find_window "${want%% *}")
+[[ -n $addr ]] || { echo "focus: no window for '$want'" >&2; exit 0; }
+# The address goes into a line of Lua for the compositor: only a hex address will do.
+[[ $addr =~ ^0x[0-9a-fA-F]{1,16}$ ]] || { echo "focus: odd window address '$addr'" >&2; exit 1; }
+
+# Lua-configured Hyprland takes the dispatcher through eval; older,
+# conf-configured installs still take `hyprctl dispatch`.
+hyprctl -q eval "hl.dispatch(hl.dsp.focus({ window = \"address:$addr\" }))" >/dev/null 2>&1 \
+  || hyprctl -q dispatch focuswindow "address:$addr" >/dev/null 2>&1

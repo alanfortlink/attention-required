@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+#
+# The MSN Messenger nudge: the whole screen shakes for a moment.
+#
+# Done with a Hyprland screen shader that moves the whole picture to a new
+# random offset `speed` times a second, applied for `duration` seconds and
+# then taken away again. Damage tracking is switched off for those seconds
+# so a frame is a full redraw; it is put back exactly as it was. (Hyprland
+# still only draws when something changed: the service shows a 2px overlay
+# that repaints every frame while this runs, see FrameTicker.qml.)
+#
+# Options (set on the effect in rules.json):
+#   duration   seconds, default 1
+#   intensity  0.5..30, how far the picture moves, default 1.5 (a phone buzz; 6 is a proper MSN nudge)
+#   speed      new positions per second, default 200: at or above the refresh rate every frame differs
+set -uo pipefail
+
+duration=${AR_OPT_DURATION:-1}
+intensity=${AR_OPT_INTENSITY:-1.5}
+speed=${AR_OPT_SPEED:-200}
+num='^[0-9]*\.?[0-9]+$'
+[[ $duration =~ $num ]] || duration=1
+[[ $intensity =~ $num ]] || intensity=1.5
+[[ $speed =~ $num ]] || speed=200
+
+command -v hyprctl >/dev/null 2>&1 || { echo "nudge: hyprctl not found" >&2; exit 1; }
+
+run_dir=${XDG_RUNTIME_DIR:-/tmp}/attention-required
+mkdir -p "$run_dir" || exit 1
+shader=$run_dir/nudge.frag
+
+# One nudge at a time. A second one arriving mid-shake is dropped rather
+# than queued: by the time it ran, the first would have made the point.
+exec 9>"$run_dir/nudge.lock"
+flock -n 9 || exit 0
+
+amp=$(awk -v i="$intensity" 'BEGIN { printf "%.5f", (i > 30 ? 30 : i) / 1000 }')
+rate=$(awk -v s="$speed" 'BEGIN { printf "%.1f", (s < 1 ? 1 : s) }')
+
+cat > "$shader" <<FRAG
+#version 320 es
+precision highp float;
+in vec2 v_texcoord;
+uniform sampler2D tex;
+uniform float time;
+out vec4 fragColor;
+// A new pseudo-random offset every 1/$rate s, so the picture jumps rather
+// than glides: what a fast vibration looks like at any frame rate.
+void main() {
+  float step = floor(mod(time, 1000.0) * $rate);
+  float r1 = fract(sin(step * 12.9898) * 43758.5453);
+  float r2 = fract(sin(step * 78.2330) * 43758.5453);
+  vec2 off = (vec2(r1, r2) - 0.5) * 2.0 * $amp;
+  fragColor = texture(tex, clamp(v_texcoord + off, vec2(0.0), vec2(1.0)));
+}
+FRAG
+
+lua_string() {
+  local s=${1//\\/\\\\}
+  s=${s//\"/\\\"}
+  printf '%s' "$s"
+}
+
+# The config keys are written through Hyprland's Lua API (hl.config), which
+# is what a Lua-configured Hyprland accepts at runtime; older, conf-configured
+# installs still take `hyprctl keyword`.
+set_option() {
+  local lua_section=$1 lua_key=$2 conf_key=$3 value=$4
+  if hyprctl -q eval "hl.config({ $lua_section = { $lua_key = $value } })" >/dev/null 2>&1; then
+    return 0
+  fi
+  local plain=$value
+  [[ $plain == \"*\" ]] && plain=${plain:1:-1}
+  hyprctl -q keyword "$conf_key" "$plain" >/dev/null 2>&1
+}
+
+prev_shader=$(hyprctl -j getoption decoration:screen_shader 2>/dev/null | jq -r '.str // empty')
+[[ -z $prev_shader || $prev_shader == "$shader" ]] && prev_shader='[[EMPTY]]'
+prev_damage=$(hyprctl -j getoption debug:damage_tracking 2>/dev/null | jq -r '.int // 2')
+[[ $prev_damage =~ ^[0-9]+$ ]] || prev_damage=2
+
+restore() {
+  set_option decoration screen_shader decoration:screen_shader "\"$(lua_string "$prev_shader")\""
+  set_option debug damage_tracking debug:damage_tracking "$prev_damage"
+}
+trap restore EXIT INT TERM
+
+set_option debug damage_tracking debug:damage_tracking 0
+set_option decoration screen_shader decoration:screen_shader "\"$(lua_string "$shader")\""
+sleep "$duration"

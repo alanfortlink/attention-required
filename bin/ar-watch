@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+#
+# Streams every notification sent on this desktop, one JSON object per line:
+#   {"source": "popup" | "silenced", "key", "app", "summary", "body",
+#    "appIcon", "urgency", "replacesId", "timestamp"}
+#
+# The source of truth is the session bus: every notification is a Notify
+# call on org.freedesktop.Notifications, watched with `busctl monitor`. That
+# sees everything, including what Omarchy's notification service drops on
+# the floor while Do Not Disturb is on (a bare notify-send, for one), so a
+# rule can still let it through. "silenced" means Do Not Disturb was on when
+# it arrived.
+#
+# Without busctl, the files Omarchy's notification service writes under
+# ~/.local/state/omarchy/notifications/ are watched instead: one per popup,
+# moved into history/ when it leaves the screen; a silenced one is written
+# straight into history/.
+set -uo pipefail
+
+command -v jq >/dev/null 2>&1 || { echo "jq is not installed" >&2; exit 1; }
+
+dnd_state() {
+  local state
+  state=$(omarchy-shell notifications isDnd 2>/dev/null || true)
+  [[ $state == on ]] && echo silenced || echo popup
+}
+
+# ----------------------------------------------------------------- D-Bus
+
+if [[ ${AR_SOURCE:-bus} == bus ]] && command -v busctl >/dev/null 2>&1; then
+  exec 3< <(busctl --user monitor --json=short \
+    --match "type='method_call',interface='org.freedesktop.Notifications',member='Notify'" 2>/dev/null)
+  monitor=$!
+  trap 'kill "$monitor" 2>/dev/null' EXIT INT TERM
+  # Anything on the bus can send a notification, of any size. A message
+  # over 256 KB is dropped unread, and what is passed on is cut to what a
+  # rule could ever need: no field longer than a few thousand characters.
+  while IFS= read -r line <&3; do
+    [[ $line == *'"member":"Notify"'* ]] || continue
+    (( ${#line} > 262144 )) && continue
+    source=$(dnd_state)
+    jq -c --arg source "$source" '
+      def clip($n): if type == "string" then .[0:$n] else "" end;
+      select(.member == "Notify" and (.payload.data | type) == "array" and (.payload.data | length) >= 5)
+      | .payload.data as $d
+      | (if ($d[6] | type) == "object" then $d[6] else {} end) as $hints
+      | (if ($d[1] | type) == "number" then $d[1] else 0 end) as $replaces
+      | {
+          source: $source,
+          key: (if $replaces != 0 then "\($d[0] | clip(200)):replaces:\($replaces)" else "\(."timestamp-realtime" // 0)-\(.cookie // 0)" end),
+          app: ($d[0] | clip(200)),
+          summary: ($d[3] | clip(2000)),
+          body: ($d[4] | clip(8000)),
+          appIcon: (if ($d[2] | clip(1000)) != "" then ($d[2] | clip(1000)) else ($hints["image-path"].data // "" | clip(1000)) end),
+          urgency: ($hints.urgency.data // 1),
+          replacesId: $replaces,
+          timestamp: ((."timestamp-realtime" // 0) / 1000 | floor)
+        }' <<<"$line" 2>/dev/null
+  done
+  exit 0
+fi
+
+# ----------------------------------------------------------------- files
+
+state_home=${XDG_STATE_HOME:-$HOME/.local/state}
+popup_dir=${AR_SRC_DIR:-$state_home/omarchy/notifications}
+history_dir=$popup_dir/history
+mkdir -p "$popup_dir" "$history_dir" || exit 1
+
+emit() {
+  local source=$1 path=$2 name key
+  name=$(basename "$path")
+  [[ $name == *.json ]] || return 0
+  key=${name%.json}
+  [[ -s $path ]] || return 0
+  # The service writes small files; anything bigger is not one of them.
+  (( $(stat -c %s "$path" 2>/dev/null || echo 0) > 262144 )) && return 0
+  jq -c --arg source "$source" --arg key "$key" '
+    def clip($n): if type == "string" then .[0:$n] else "" end;
+    { source: $source, key: $key, app: (.app | clip(200)), summary: (.summary | clip(2000)),
+      body: (.body | clip(8000)), appIcon: (.appIcon | clip(1000)),
+      urgency: (if (.urgency | type) == "number" then .urgency else 1 end), timestamp: (.timestamp // 0) }' "$path" 2>/dev/null
+}
+
+if command -v inotifywait >/dev/null 2>&1; then
+  echo "busctl not found; watching the notification files instead" >&2
+  inotifywait -m -q -e close_write -e moved_to --format '%e|%w|%f' "$popup_dir" "$history_dir" |
+    while IFS='|' read -r events dir file; do
+      dir=${dir%/}
+      if [[ $dir == "$history_dir" ]]; then
+        [[ $events == *MOVED_TO* ]] && continue
+        emit silenced "$dir/$file"
+      else
+        emit popup "$dir/$file"
+      fi
+    done
+  exit 0
+fi
+
+echo "neither busctl nor inotifywait found; polling the notification files every half second" >&2
+declare -A seen
+for f in "$popup_dir"/*.json "$history_dir"/*.json; do
+  [[ -e $f ]] && seen[$f]=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+done
+while sleep 0.5; do
+  for f in "$popup_dir"/*.json; do
+    [[ -e $f ]] || continue
+    m=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+    [[ ${seen[$f]:-} == "$m" ]] && continue
+    seen[$f]=$m
+    emit popup "$f"
+  done
+  for f in "$history_dir"/*.json; do
+    [[ -e $f ]] || continue
+    [[ -n ${seen[$f]:-} ]] && continue
+    seen[$f]=$(stat -c %Y "$f" 2>/dev/null || echo 0)
+    [[ -n ${seen[$popup_dir/$(basename "$f")]:-} ]] && continue
+    emit silenced "$f"
+  done
+done

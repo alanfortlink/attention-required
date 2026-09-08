@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Plays a sound.
+#
+# Options (set on the effect in rules.json):
+#   file       path to a sound file; default is the freedesktop "new message" chime
+#   intensity  volume, 0.0 .. 1.0, default 1 (`volume` works too)
+#   speed      how many times to play it, default 1 (`repeat` works too)
+set -uo pipefail
+
+file=${AR_OPT_FILE:-/usr/share/sounds/freedesktop/stereo/message-new-instant.oga}
+volume=${AR_OPT_INTENSITY:-${AR_OPT_VOLUME:-1}}
+times=${AR_OPT_SPEED:-${AR_OPT_REPEAT:-1}}
+[[ $volume =~ ^[0-9]*\.?[0-9]+$ ]] || volume=1
+[[ $times =~ ^[0-9]+$ ]] || times=1
+file=${file/#\~/$HOME}
+
+[[ -r $file ]] || { echo "sound: cannot read $file" >&2; exit 1; }
+
+play() {
+  if command -v pw-play >/dev/null 2>&1; then
+    pw-play --volume="$volume" "$file"
+  elif command -v paplay >/dev/null 2>&1; then
+    paplay "$file"
+  elif command -v mpv >/dev/null 2>&1; then
+    mpv --no-video --really-quiet --volume="$(awk -v v="$volume" 'BEGIN { printf "%d", v * 100 }')" "$file"
+  else
+    echo "sound: no player found (pw-play, paplay or mpv)" >&2
+    return 1
+  fi
+}
+
+for ((i = 0; i < times; i++)); do
+  play || exit 1
+done

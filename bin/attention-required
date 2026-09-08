@@ -1,0 +1,163 @@
+#!/usr/bin/env bash
+#
+# attention-required: rules that turn a notification into an effect.
+#
+#   attention-required list                         the rules, as a table
+#   attention-required add NAME [options]           add a rule
+#       --words a,b,c        words to look for (any of them; /regex/ allowed)
+#       --apps x,y           only notifications from these apps (substring of the app name; default: any app)
+#       --effects e1,e2      nudge | flash | sound | command | your own (default: nudge)
+#       --all                every word must be present, not any
+#       --cooldown SECONDS   at most one firing per rule in this many seconds (default 3)
+#   attention-required remove NAME
+#   attention-required enable NAME | disable NAME
+#   attention-required test EFFECT                  run one effect now, e.g. `test nudge`
+#                                                   or `test '{"type":"flash","color":"urgent"}'`
+#   attention-required simulate APP SUMMARY [BODY]  run a made-up notification past the rules
+#   attention-required settings                     open the settings popup (also: click the bell in the bar)
+#   attention-required set EFFECT OPTION VALUE      change a default, e.g. `set nudge intensity 6`
+#   attention-required toggle | on | off            pause or resume every effect (also: right-click the bell)
+#   attention-required status                       what the service has seen and fired
+#   attention-required reload                       re-read rules.json (it is also watched)
+#   attention-required edit                         open rules.json in $EDITOR
+#   attention-required path                         print where rules.json is
+#   attention-required export [FILE]                copy the rules to FILE (or print them) to keep or share
+#   attention-required import FILE                  replace the rules with FILE's (the old file is kept as a .bak)
+set -euo pipefail
+
+config_dir=${XDG_CONFIG_HOME:-$HOME/.config}/attention-required
+rules=$config_dir/rules.json
+here=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+
+die() { echo "attention-required: $*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "$1 is not installed"; }
+need jq
+
+ipc() {
+  if command -v omarchy-shell >/dev/null 2>&1; then
+    omarchy-shell attention-required "$@"
+  else
+    quickshell ipc -p "${OMARCHY_PATH:-/usr/share/omarchy}/shell" call attention-required "$@"
+  fi
+}
+
+ipc_panel() {
+  if command -v omarchy-shell >/dev/null 2>&1; then
+    omarchy-shell alanfortlink.attention-required "$@"
+  else
+    quickshell ipc -p "${OMARCHY_PATH:-/usr/share/omarchy}/shell" call alanfortlink.attention-required "$@"
+  fi
+}
+
+ensure_rules() {
+  mkdir -p "$config_dir/effects"
+  [[ -e $rules ]] || cp "$here/rules.example.json" "$rules"
+}
+
+# Written in place rather than moved into place, so the shell's file watch
+# sees the change without a restart.
+write_rules() {
+  local tmp
+  tmp=$(mktemp "$config_dir/.rules.XXXXXX")
+  cat > "$tmp"
+  jq . "$tmp" >/dev/null || { rm -f "$tmp"; die "refusing to write invalid JSON"; }
+  cat "$tmp" > "$rules"
+  rm -f "$tmp"
+}
+
+split_list() { jq -cn --arg s "$1" '$s | split(",") | map(gsub("^\\s+|\\s+$"; "")) | map(select(length > 0))'; }
+
+have_rule() { jq -e --arg n "$1" '.rules // [] | any(.name == $n)' "$rules" >/dev/null; }
+
+cmd_list() {
+  ensure_rules
+  jq -r '
+    (.rules // []) | if length == 0 then "no rules" else
+    (["NAME", "ON", "WORDS", "APPS", "EFFECTS", "COOLDOWN"] | @tsv),
+    (.[] | [
+      .name,
+      (if .enabled == false then "off" else "on" end),
+      ((.words // []) | join(", ")),
+      ((.apps // []) | if length == 0 then "any" else join(", ") end),
+      ((.effects // ["nudge"]) | map(if type == "string" then . else .type end) | join(", ")),
+      (.cooldown // 3 | tostring)
+    ] | @tsv) end' "$rules" | column -t -s $'\t'
+}
+
+cmd_add() {
+  local name=${1:-}; shift || true
+  [[ -n $name ]] || die "usage: add NAME --words a,b [--apps x,y] [--effects nudge,flash] [--all] [--cooldown N]"
+  local words='[]' apps='[]' effects='["nudge"]' match=any cooldown=3
+  while (($#)); do
+    case $1 in
+      --words) words=$(split_list "${2:-}"); shift 2 ;;
+      --apps) apps=$(split_list "${2:-}"); shift 2 ;;
+      --effects) effects=$(split_list "${2:-}"); shift 2 ;;
+      --all) match=all; shift ;;
+      --cooldown) cooldown=${2:-3}; shift 2 ;;
+      *) die "unknown option $1" ;;
+    esac
+  done
+  ensure_rules
+  have_rule "$name" && die "a rule named '$name' exists; remove it first"
+  jq --arg name "$name" --argjson words "$words" --argjson apps "$apps" --argjson effects "$effects" \
+     --arg match "$match" --argjson cooldown "$cooldown" '
+    .rules = ((.rules // []) + [{name: $name, words: $words, apps: $apps, effects: $effects, match: $match, cooldown: $cooldown}])
+    | .version = (.version // 1)' "$rules" | write_rules
+  echo "added '$name'"
+  ipc reload >/dev/null 2>&1 || true
+}
+
+cmd_remove() {
+  local name=${1:-}
+  [[ -n $name ]] || die "usage: remove NAME"
+  ensure_rules
+  have_rule "$name" || die "no rule named '$name'"
+  jq --arg n "$name" '.rules = ((.rules // []) | map(select(.name != $n)))' "$rules" | write_rules
+  echo "removed '$name'"
+  ipc reload >/dev/null 2>&1 || true
+}
+
+cmd_toggle() {
+  local enabled=$1 name=${2:-}
+  [[ -n $name ]] || die "usage: enable|disable NAME"
+  ensure_rules
+  have_rule "$name" || die "no rule named '$name'"
+  jq --arg n "$name" --argjson e "$enabled" '.rules = ((.rules // []) | map(if .name == $n then .enabled = $e else . end))' "$rules" | write_rules
+  echo "'$name' is now $([[ $enabled == true ]] && echo on || echo off)"
+  ipc reload >/dev/null 2>&1 || true
+}
+
+case ${1:-help} in
+  list|ls) cmd_list ;;
+  add) shift; cmd_add "$@" ;;
+  remove|rm) shift; cmd_remove "$@" ;;
+  enable) shift; cmd_toggle true "$@" ;;
+  disable) shift; cmd_toggle false "$@" ;;
+  test) [[ -n ${2:-} ]] || die "usage: test EFFECT"; ipc test "$2" ;;
+  simulate|sim) [[ -n ${3:-} ]] || die "usage: simulate APP SUMMARY [BODY]"; ipc simulate "$2" "$3" "${4:-}" ;;
+  settings) ipc_panel toggle ;;
+  set) [[ -n ${4:-} ]] || die "usage: set <effect> <option> <value>   e.g. set nudge intensity 6"; ipc setDefault "$2" "$3" "$4" ;;
+  toggle) ipc toggle ;;
+  on|resume) ipc setEnabled true ;;
+  off|pause) ipc setEnabled false ;;
+  status) ipc state | jq . ;;
+  rules) ipc rules | jq . ;;
+  reload) ipc reload ;;
+  edit) ensure_rules; "${EDITOR:-nvim}" "$rules" ;;
+  path) echo "$rules" ;;
+  export)
+    ensure_rules
+    if [[ -n ${2:-} ]]; then cp "$rules" "$2" && echo "saved to $2"; else cat "$rules"; fi ;;
+  import)
+    [[ -n ${2:-} && -r $2 ]] || die "usage: import FILE"
+    jq -e '(.rules | type) == "array"' "$2" >/dev/null 2>&1 || die "$2 is not a rules file (needs a \"rules\" list)"
+    ensure_rules
+    backup="$rules.bak.$(date +%s)"
+    cp "$rules" "$backup"
+    jq '.version = (.version // 1)' "$2" | write_rules
+    echo "imported $2 ($(jq '.rules | length' "$rules") rules); the previous file is $backup"
+    ipc reload >/dev/null 2>&1 || true ;;
+  help|-h|--help) sed -n '2,/^set -euo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' ;;
+  *) die "unknown command '$1' (try: attention-required help)" ;;
+esac

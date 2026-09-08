@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+#
+# Runs a shell command of yours, with the notification in the environment
+# (AR_APP, AR_SUMMARY, AR_BODY, AR_RULE, ...; see bin/ar-effect).
+#
+#   {"type": "command", "run": "notify-send \"$AR_RULE\" \"$AR_SUMMARY\""}
+set -uo pipefail
+[[ -n ${AR_OPT_RUN:-} ]] || { echo "command: the effect needs a \"run\" option" >&2; exit 2; }
+exec bash -c "$AR_OPT_RUN"
