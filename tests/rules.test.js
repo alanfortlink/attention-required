@@ -6,6 +6,10 @@ const assert = require("assert")
 const src = fs.readFileSync(path.join(__dirname, "..", "Rules.js"), "utf8").replace(/\/\/ Not a .pragma library[^\n]*/, "")
 const R = {}
 new Function("exports", src + "\n" + ["normalizeConfig", "matchingRules", "stripTags", "describeRule", "normalizeEffect", "withDefaults", "renderTemplate"].map(n => `exports.${n} = ${n}`).join("\n"))(R)
+const catalogSrc = fs.readFileSync(path.join(__dirname, "..", "EffectCatalog.js"), "utf8")
+const C = {}
+new Function("exports", catalogSrc + "\nexports.effects = EFFECTS")(C)
+const settingsSrc = fs.readFileSync(path.join(__dirname, "..", "Settings.qml"), "utf8")
 
 const cfg = R.normalizeConfig({
   rules: [
@@ -57,5 +61,14 @@ assert.deepStrictEqual(all.rules[0].effects, [{ type: "nudge" }])
 assert.deepStrictEqual(all.rules[1].effects, [])
 assert.strictEqual(R.renderTemplate("", { summary: "Hi", body: "<b>x</b>" }, { name: "r" }), "Hi")
 assert.strictEqual(R.renderTemplate("{rule}: {summary} / {body} ({app})", { app: "A", summary: "Hi", body: "<b>x</b>" }, { name: "r" }), "r: Hi / x (A)")
+
+const sound = C.effects.find(effect => effect.type === "sound")
+assert.ok(sound.rows.some(row => row.key === "duration" && row.min === 0 && row.max === 30 && row.fallback === 0))
+assert.ok(sound.rows.some(row => row.key === "repeat" && row.min === 1 && row.max === 50))
+assert.strictEqual(sound.options.length, 1)
+assert.deepStrictEqual(sound.options[0].values.map(value => value.value), ["message", "bell", "warning", "complete", "phone"])
+assert.ok(settingsSrc.includes("function bindService()"))
+assert.ok(settingsSrc.includes("running: root.svc === null"))
+assert.ok(settingsSrc.includes("onToggled: hero.toggleAttention()"))
 
 console.log("rules: all tests passed")

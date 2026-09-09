@@ -86,7 +86,7 @@ Values outside a range are clamped when the effect runs. Every effect has
 | `airplane` | flight seconds 0.5..120 (7) | size 0.2..10 (1) | | `altitude` 0..1 from the top (0.2); `direction`: `ltr`, `rtl`; `text` template |
 | `confetti` | seconds it keeps coming 0.1..60 (1) | amount 0.05..20 (1) | launch power 0.1..10 (1) | `style`: `cannons` (bottom corners, up), `burst` (centre), `rain` (top) |
 | `blink` | seconds 0.1..30 (1) | darkness 0.01..1 (0.6) | blinks per second 0.2..30 (2) | |
-| `sound` | | volume 0..2 (1) | times played 1..50 (1) | `file`: path to a sound file (default: freedesktop's new-message chime) |
+| `sound` | seconds to fit repeats 0..30; 0 is natural speed (0) | volume 0..2 (1) | repeat 1..50 (1) | `sound`: `message`, `bell`, `warning`, `complete`, or `phone` |
 | `focus` | | | | `window`: a window class or title to focus instead of the sending app |
 | `command` | | | | `run`: a shell command, run as the user with `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, `AR_KEY`, `AR_URGENCY` and every effect option as `AR_OPT_<NAME>` in the environment |
 

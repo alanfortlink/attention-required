@@ -22,7 +22,8 @@ or resume every effect. A first rule is there to start: any notification that
 mentions **deliveroo** shakes the screen.
 
 Runtime dependencies, all part of a stock Omarchy: `jq`, `busctl` (systemd),
-`hyprctl`, `notify-send`, `pw-play` (for the sound). `./install.sh` is an
+`hyprctl`, `notify-send`, `pw-play` (for the sound), and `ffmpeg`/`ffprobe`
+(when sound repeats must fit a duration). `./install.sh` is an
 optional helper for a checkout somewhere else: it links the plugin into
 `~/.config/omarchy/plugins`, puts the `attention-required` command on your
 PATH and enables the bell. `omarchy plugin add` never runs it.
@@ -87,7 +88,7 @@ that does not set the option itself.
 | `airplane` | A plane bobs across the screen, trailing exhaust, towing the message on a rippling flag. | flight seconds (7) | size (1) | | `altitude` 0..1 (0.2), `direction`: ltr, rtl; `text` |
 | `confetti` | Confetti in the theme's colours. | seconds (1) | amount (1) | launch power (1) | `style`: cannons (bottom corners, up), burst (centre), rain (top) |
 | `blink` | The screen dims and comes back. | seconds (1) | darkness 0..1 (0.6) | blinks per second (2) | |
-| `sound` | Plays a chime with `pw-play`. | | volume (1) | times (1) | `file` |
+| `sound` | Plays a selected chime with `pw-play`. | seconds to fit repeats; 0 is natural speed (0) | volume (1) | times (1) | Message, bell, warning, complete, or phone |
 | `focus` | Brings the sending app's window to the front. | | | | `window`: a class or title instead |
 | `command` | Runs a shell command. | | | | `run`; sees `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, every option as `AR_OPT_<NAME>` |
 

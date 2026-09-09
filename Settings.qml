@@ -25,7 +25,7 @@ Panel {
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
-  readonly property var svc: bar && bar.shell ? bar.shell.serviceFor("alanfortlink.attention-required") : null
+  property var svc: null
   readonly property bool paused: svc ? !svc.enabled : false
   readonly property var cfg: svc ? svc.rawConfig : ({})
   readonly property var rules: svc ? svc.rawRules : []
@@ -39,6 +39,25 @@ Panel {
   readonly property int trailInset: Style.space(6)
   readonly property int labelW: Style.space(96)
   readonly property var catalog: Catalog.EFFECTS
+
+  function bindService() {
+    var host = bar && bar.shell ? bar.shell : null
+    if (!host || typeof host.serviceFor !== "function") return
+    var service = host.serviceFor("alanfortlink.attention-required")
+    if (service) root.svc = service
+  }
+
+  onBarChanged: {
+    root.svc = null
+    root.bindService()
+  }
+  Component.onCompleted: root.bindService()
+  Timer {
+    interval: 200
+    running: root.svc === null
+    repeat: true
+    onTriggered: root.bindService()
+  }
 
   // ---------- navigation ----------
   property string page: "list"        // list | rule | effect
@@ -185,27 +204,33 @@ Panel {
         spacing: Style.space(10)
 
         PanelHero {
+          id: hero
           width: parent.width
           title: "Attention Required"
           meta: root.armedLabel()
-          detail: root.svc && root.svc.configError !== "" ? root.svc.configError : ""
+          detail: !root.svc ? "Service unavailable" : (root.svc.configError !== "" ? root.svc.configError : "")
           foreground: root.fg
           fontFamily: root.fontFamily
+          readonly property bool attentionPaused: root.paused
+          readonly property var attentionService: root.svc
+          function toggleAttention() {
+            if (attentionService) attentionService.setEnabled(attentionPaused)
+          }
           iconComponent: Component {
             Text {
-              text: root.paused ? "󰂜" : "󰂞"
-              color: root.fg
-              opacity: root.paused ? 0.5 : 1
-              font.family: root.fontFamily
+              text: hero.attentionPaused ? "󰂜" : "󰂞"
+              color: hero.foreground
+              opacity: hero.attentionPaused ? 0.5 : 1
+              font.family: hero.fontFamily
               font.pixelSize: Style.font.display
             }
           }
           trailingControl: Component {
             ToggleSwitch {
-              checked: !root.paused
-              foreground: root.fg
-              cursorPad: root.trailInset
-              onToggled: if (root.svc) root.svc.setEnabled(root.paused)
+              checked: !hero.attentionPaused
+              foreground: hero.foreground
+              cursorPad: Style.space(6)
+              onToggled: hero.toggleAttention()
             }
           }
         }

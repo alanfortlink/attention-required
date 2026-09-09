@@ -85,13 +85,21 @@ var EFFECTS = [
   },
   {
     type: "sound", label: "Sound", icon: "󰕾",
-    subtitle: "Plays a chime",
+    subtitle: "Plays a selected chime; Fit in 0 uses its natural speed",
     rows: [
+      { key: "duration", label: "Fit in", min: 0, max: 30, step: 0.1, fallback: 0, unit: " s" },
       { key: "intensity", label: "Volume", min: 0, max: 2, step: 0.01, fallback: 1, unit: "" },
-      { key: "speed", label: "Repeat", min: 1, max: 50, step: 1, fallback: 1, unit: " ×" }
+      { key: "repeat", label: "Times", min: 1, max: 50, step: 1, fallback: 1, unit: " ×" }
     ],
     options: [
-      { key: "file", label: "File", type: "text", fallback: "", placeholder: "empty: the default chime · or a path to a sound file" }
+      { key: "sound", label: "Sound", type: "enum", fallback: "message",
+        values: [
+          { value: "message", label: "Message" },
+          { value: "bell", label: "Bell" },
+          { value: "warning", label: "Warning" },
+          { value: "complete", label: "Complete" },
+          { value: "phone", label: "Phone" }
+        ] }
     ]
   },
   {

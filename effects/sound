@@ -3,14 +3,23 @@
 # Plays a sound.
 #
 # Options (set on the effect in rules.json):
-#   file       path to a sound file; default is the freedesktop "new message" chime
+#   sound      message | bell | warning | complete | phone (default: message)
+#   duration   fit all repeats into this many seconds; 0 uses natural speed
 #   intensity  volume, 0.0 .. 1.0, default 1 (`volume` works too)
-#   speed      how many times to play it, default 1 (`repeat` works too)
+#   repeat     how many times to play it, default 1 (`speed` works for old rules)
 set -uo pipefail
 
-file=${AR_OPT_FILE:-/usr/share/sounds/freedesktop/stereo/message-new-instant.oga}
+case ${AR_OPT_SOUND:-message} in
+  bell) file=/usr/share/sounds/freedesktop/stereo/bell.oga ;;
+  warning) file=/usr/share/sounds/freedesktop/stereo/dialog-warning.oga ;;
+  complete) file=/usr/share/sounds/freedesktop/stereo/complete.oga ;;
+  phone) file=/usr/share/sounds/freedesktop/stereo/phone-incoming-call.oga ;;
+  *) file=/usr/share/sounds/freedesktop/stereo/message-new-instant.oga ;;
+esac
 volume=${AR_OPT_INTENSITY:-${AR_OPT_VOLUME:-1}}
-times=${AR_OPT_SPEED:-${AR_OPT_REPEAT:-1}}
+times=${AR_OPT_REPEAT:-}
+[[ $times =~ ^[0-9]+$ ]] || times=${AR_OPT_SPEED:-1}
+duration=${AR_OPT_DURATION:-0}
 [[ $volume =~ ^[0-9]*\.?[0-9]+$ ]] || volume=1
 [[ $times =~ ^[0-9]+$ ]] || times=1
 (( times > 50 )) && times=50
@@ -31,6 +40,47 @@ play() {
   fi
 }
 
-for ((i = 0; i < times; i++)); do
-  play || exit 1
-done
+play_repeatedly() {
+  for ((i = 0; i < times; i++)); do
+    play || return 1
+  done
+}
+
+# ffmpeg changes the tempo of each chime so all repeats fit the chosen duration.
+# Each repetition gets its own playback stream, keeping every hit distinct.
+fit_duration() {
+  command -v ffprobe >/dev/null 2>&1 || { echo "sound: ffprobe is required when Fit in is set" >&2; return 1; }
+  command -v ffmpeg >/dev/null 2>&1 || { echo "sound: ffmpeg is required when Fit in is set" >&2; return 1; }
+  command -v pw-play >/dev/null 2>&1 || { echo "sound: pw-play is required when Fit in is set" >&2; return 1; }
+
+  local clip total tempo filter
+  clip=$(ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 "$file" 2>/dev/null) || return 1
+  [[ $clip =~ ^[0-9]*\.?[0-9]+$ ]] || return 1
+  total=$(awk -v c="$clip" -v n="$times" 'BEGIN { printf "%.8f", c * n }')
+  tempo=$(awk -v t="$total" -v d="$duration" 'BEGIN { printf "%.8f", t / d }')
+  [[ $tempo =~ ^[0-9]*\.?[0-9]+$ ]] || return 1
+
+  # atempo accepts one factor from 0.5 to 2. Chain factors for every value the
+  # settings slider permits, preserving pitch while changing playback speed.
+  filter=
+  while awk -v v="$tempo" 'BEGIN { exit !(v > 2) }'; do
+    filter+="atempo=2,"
+    tempo=$(awk -v v="$tempo" 'BEGIN { printf "%.8f", v / 2 }')
+  done
+  while awk -v v="$tempo" 'BEGIN { exit !(v < 0.5) }'; do
+    filter+="atempo=0.5,"
+    tempo=$(awk -v v="$tempo" 'BEGIN { printf "%.8f", v * 2 }')
+  done
+  filter+="atempo=$tempo"
+
+  for ((i = 0; i < times; i++)); do
+    ffmpeg -nostdin -v error -i "$file" -filter:a "$filter" -f wav - \
+      | pw-play --volume="$volume" - || return 1
+  done
+}
+
+if [[ $duration =~ ^[0-9]*\.?[0-9]+$ ]] && awk -v d="$duration" 'BEGIN { exit !(d > 0) }'; then
+  fit_duration || exit $?
+else
+  play_repeatedly
+fi
