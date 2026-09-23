@@ -1,9 +1,18 @@
 #!/usr/bin/env bash
 #
 # Runs a shell command of yours, with the notification in the environment
-# (AR_APP, AR_SUMMARY, AR_BODY, AR_RULE, ...; see bin/ar-effect).
+# (AR_APP, AR_SUMMARY, AR_BODY, AR_RULE, ...; see bin/ar-effect). Real
+# notifications must also name the exact trusted sender executable; this is
+# checked again here as defense in depth against a bad caller.
 #
 #   {"type": "command", "run": "notify-send \"$AR_RULE\" \"$AR_SUMMARY\""}
 set -uo pipefail
 [[ -n ${AR_OPT_RUN:-} ]] || { echo "command: the effect needs a \"run\" option" >&2; exit 2; }
+if [[ ${AR_SOURCE:-} != test ]]; then
+  trusted=$(readlink -f -- "${AR_OPT_TRUSTED_EXECUTABLE:-}" 2>/dev/null || true)
+  [[ ${AR_SENDER_PORTAL:-false} != true && -n $trusted && -n ${AR_SENDER_EXE:-} && $trusted == "$AR_SENDER_EXE" ]] || {
+    echo "command: blocked because the notification sender is not trusted" >&2
+    exit 3
+  }
+fi
 exec bash -c "$AR_OPT_RUN"

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Streams every notification sent on this desktop, one JSON object per line:
-#   {"source": "popup" | "silenced", "key", "app", "summary", "body",
-#    "appIcon", "urgency", "replacesId", "timestamp"}
+#   {"source": "popup" | "silenced", "sender", "senderExe", "key", "app",
+#    "summary", "body", "appIcon", "urgency", "replacesId", "timestamp"}
 #
 # The source of truth is the session bus: every notification is a Notify
 # call on org.freedesktop.Notifications, watched with `busctl monitor`. That
@@ -25,6 +25,21 @@ dnd_state() {
   [[ $state == on ]] && echo silenced || echo popup
 }
 
+# A notification's app_name is data supplied by the sender and is therefore
+# not an identity. Resolve the authenticated D-Bus sender to its process
+# executable so privileged effects can require an identity that cannot be
+# spoofed in Notify's payload. Portal senders intentionally remain unverified:
+# their desktop-entry hint is caller-controlled without a portal identity API.
+sender_executable() {
+  local sender=$1 pid
+  [[ $sender =~ ^:[0-9]+\.[0-9]+$ ]] || return 0
+  pid=$(busctl --user call org.freedesktop.DBus /org/freedesktop/DBus \
+    org.freedesktop.DBus GetConnectionUnixProcessID s "$sender" 2>/dev/null \
+    | awk '$1 == "u" { print $2; exit }')
+  [[ $pid =~ ^[0-9]+$ ]] || return 0
+  readlink -f -- "/proc/$pid/exe" 2>/dev/null || true
+}
+
 # ----------------------------------------------------------------- D-Bus
 
 if [[ ${AR_SOURCE:-bus} == bus ]] && command -v busctl >/dev/null 2>&1; then
@@ -39,7 +54,14 @@ if [[ ${AR_SOURCE:-bus} == bus ]] && command -v busctl >/dev/null 2>&1; then
     [[ $line == *'"member":"Notify"'* ]] || continue
     (( ${#line} > 262144 )) && continue
     source=$(dnd_state)
-    jq -c --arg source "$source" '
+    sender=$(jq -r 'select(.member == "Notify") | .sender // ""' <<<"$line" 2>/dev/null)
+    sender_exe=$(sender_executable "$sender")
+    sender_portal=false
+    case ${sender_exe##*/} in
+      xdg-desktop-portal|xdg-desktop-portal-*) sender_portal=true ;;
+    esac
+    jq -c --arg source "$source" --arg sender "$sender" --arg senderExe "$sender_exe" \
+      --arg senderPortal "$sender_portal" '
       def clip($n): if type == "string" then .[0:$n] else "" end;
       select(.member == "Notify" and (.payload.data | type) == "array" and (.payload.data | length) >= 5)
       | .payload.data as $d
@@ -47,6 +69,9 @@ if [[ ${AR_SOURCE:-bus} == bus ]] && command -v busctl >/dev/null 2>&1; then
       | (if ($d[1] | type) == "number" then $d[1] else 0 end) as $replaces
       | {
           source: $source,
+          sender: $sender,
+          senderExe: $senderExe,
+          senderPortal: ($senderPortal == "true"),
           key: (if $replaces != 0 then "\($d[0] | clip(200)):replaces:\($replaces)" else "\(."timestamp-realtime" // 0)-\(.cookie // 0)" end),
           app: ($d[0] | clip(200)),
           summary: ($d[3] | clip(2000)),
@@ -77,7 +102,7 @@ emit() {
   (( $(stat -c %s "$path" 2>/dev/null || echo 0) > 262144 )) && return 0
   jq -c --arg source "$source" --arg key "$key" '
     def clip($n): if type == "string" then .[0:$n] else "" end;
-    { source: $source, key: $key, app: (.app | clip(200)), summary: (.summary | clip(2000)),
+    { source: $source, sender: "", senderExe: "", senderPortal: false, key: $key, app: (.app | clip(200)), summary: (.summary | clip(2000)),
       body: (.body | clip(8000)), appIcon: (.appIcon | clip(1000)),
       urgency: (if (.urgency | type) == "number" then .urgency else 1 end), timestamp: (.timestamp // 0) }' "$path" 2>/dev/null
 }

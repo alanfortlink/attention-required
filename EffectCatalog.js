@@ -112,10 +112,11 @@ var EFFECTS = [
   },
   {
     type: "command", label: "Command", icon: "󰆍",
-    subtitle: "Runs a command of yours",
+    subtitle: "Runs a command only from a trusted sender",
     rows: [],
     options: [
-      { key: "run", label: "Run", type: "text", fallback: "", placeholder: "empty: nothing runs · sees $AR_SUMMARY, $AR_BODY, $AR_APP, $AR_RULE" }
+      { key: "run", label: "Run", type: "text", fallback: "", placeholder: "empty: nothing runs · sees $AR_SUMMARY, $AR_BODY, $AR_APP, $AR_RULE" },
+      { key: "trustedExecutable", label: "Trusted executable", type: "text", fallback: "", placeholder: "absolute path; required for real notifications" }
     ]
   }
 ]

@@ -90,7 +90,7 @@ that does not set the option itself.
 | `blink` | The screen dims and comes back. | seconds (1) | darkness 0..1 (0.6) | blinks per second (2) | |
 | `sound` | Plays a selected chime with `pw-play`. | seconds to fit repeats; 0 is natural speed (0) | volume (1) | times (1) | Message, bell, warning, complete, or phone |
 | `focus` | Brings the sending app's window to the front. | | | | `window`: a class or title instead |
-| `command` | Runs a shell command. | | | | `run`; sees `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, every option as `AR_OPT_<NAME>` |
+| `command` | Runs a shell command only for a verified sender. | | | | `run`; `trustedExecutable` must be the sender's absolute executable path; sees `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, every option as `AR_OPT_<NAME>` |
 
 `color` is `accent`, `urgent`, `foreground` or any CSS color. Text templates
 take `{summary}`, `{body}`, `{app}`, `{rule}`. Your own effect is an executable
@@ -129,8 +129,10 @@ attention-required set nudge intensity 6 | status | effects | export [FILE] | im
   `debug.damage_tracking` off for the shake through `hyprctl eval`, restoring
   both after; `focus` dispatches a window focus. Nothing under `~/.config/hypr`
   is written.
-- The `command` effect runs whatever `run` says, as you, with the notification
-  in the environment. Only import a rules file you trust.
+- The `command` effect runs whatever `run` says, as you, only when a real
+  notification came from the exact `trustedExecutable` path configured on the
+  effect. Test runs are explicit user actions. Notifications from file-mode
+  fallback or desktop portals cannot authorize commands.
 - No sudo, no package installs, no downloads. State: `~/.config/attention-required/`
   (rules, your effects), `~/.local/state/attention-required/paused`,
   `$XDG_RUNTIME_DIR/attention-required/` (the shader).

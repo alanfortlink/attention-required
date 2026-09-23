@@ -845,6 +845,9 @@ Panel {
     property var commit: null
     foreground: root.fg
     font.family: root.fontFamily
+    selectByMouse: true
+    selectionColor: Util.alpha(Color.accent, 0.8)
+    selectedTextColor: Color.background
     onCurrentChanged: if (!activeFocus) text = current
     Component.onCompleted: text = current
     function revert() { text = current }
@@ -983,11 +986,12 @@ Panel {
           width: Math.min(flow.width, Math.max(Style.space(230), implicitWidth + Style.space(12)))
           height: Style.space(22)
           activeFocusOnTab: true
+          selectByMouse: true
           verticalAlignment: TextInput.AlignVCenter
           leftPadding: Style.space(4)
           color: root.fg
-          selectionColor: Util.alpha(Color.accent, 0.4)
-          selectedTextColor: root.fg
+          selectionColor: Util.alpha(Color.accent, 0.8)
+          selectedTextColor: Color.background
           font.family: root.fontFamily
           font.pixelSize: Style.font.body
           clip: true

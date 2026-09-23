@@ -117,6 +117,17 @@ function withDefaults(cfg, effect) {
   return out
 }
 
+// A command is safe to run automatically only when the watcher supplied an
+// authenticated, non-portal sender executable that exactly matches the path
+// the user configured. Test invocations are explicit user actions.
+function commandSenderTrusted(effect, notif) {
+  if (str(notif && notif.source) === "test") return true
+  if (!notif || notif.senderPortal === true) return false
+  var expected = str(effect && effect.trustedExecutable).trim()
+  var actual = str(notif.senderExe).trim()
+  return expected.length > 0 && actual.length > 0 && expected === actual
+}
+
 function normalizeConfig(raw) {
   var cfg = { whileDnd: true, letThrough: true, defaults: {}, rules: [] }
   if (!raw || typeof raw !== "object") return cfg

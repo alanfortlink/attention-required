@@ -88,7 +88,7 @@ Values outside a range are clamped when the effect runs. Every effect has
 | `blink` | seconds 0.1..30 (1) | darkness 0.01..1 (0.6) | blinks per second 0.2..30 (2) | |
 | `sound` | seconds to fit repeats 0..30; 0 is natural speed (0) | volume 0..2 (1) | repeat 1..50 (1) | `sound`: `message`, `bell`, `warning`, `complete`, or `phone` |
 | `focus` | | | | `window`: a window class or title to focus instead of the sending app |
-| `command` | | | | `run`: a shell command, run as the user with `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, `AR_KEY`, `AR_URGENCY` and every effect option as `AR_OPT_<NAME>` in the environment |
+| `command` | | | | `run`: a shell command, run as the user only when `trustedExecutable` exactly matches the authenticated notification sender executable; `trustedExecutable` is an absolute path; environment includes `AR_APP`, `AR_SUMMARY`, `AR_BODY`, `AR_RULE`, `AR_KEY`, `AR_URGENCY`, `AR_SENDER_EXE`, and every effect option as `AR_OPT_<NAME>` |
 
 Text templates (`banner`, `airplane`) take `{summary}`, `{body}`, `{app}`,
 `{rule}`; empty means the summary (the banner also shows the body then).
@@ -178,5 +178,7 @@ attention-required on
   restores them. It needs the Lua-configured Hyprland that Omarchy 4 ships.
 - Notification fields are clipped (summary 2000, body 8000 characters) before
   matching; bus messages over 256 KB are ignored.
-- A `command` effect runs whatever `run` says. Do not write one from untrusted
-  input.
+- A `command` effect runs whatever `run` says only after the authenticated
+  notification sender executable exactly matches `trustedExecutable`. Missing
+  or mismatched trust paths block real notifications; test runs are explicit
+  user actions. Do not configure a broad executable such as a shell or portal.

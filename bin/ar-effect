@@ -8,7 +8,8 @@
 #
 # The script is ~/.config/attention-required/effects/<type> if you wrote one,
 # otherwise effects/<type> next to this plugin. It runs with:
-#   AR_APP, AR_SUMMARY, AR_BODY, AR_KEY, AR_URGENCY   the notification
+#   AR_SOURCE, AR_APP, AR_SUMMARY, AR_BODY, AR_KEY, AR_URGENCY, AR_SENDER_EXE,
+#   AR_SENDER_PORTAL                                  the notification
 #   AR_RULE                                           the rule that matched
 #   AR_EFFECT                                         the effect type
 #   AR_OPT_<NAME>                                     each option on the effect, upper-cased
@@ -51,6 +52,12 @@ done < <(jq -j '
     | select(.key != "type")
     | "AR_OPT_\(.key | env_key)=\(.value | if type == "string" then . else tojson end)\u0000")
 ' <<<"$payload" 2>/dev/null)
+
+# Keep the security-sensitive sender fields in a stable, readable environment
+# spelling even though the general option exporter preserves camel-case keys.
+export AR_SENDER_EXE=$(jq -r '.notification.senderExe // ""' <<<"$payload" 2>/dev/null)
+export AR_SENDER_PORTAL=$(jq -r '.notification.senderPortal // false' <<<"$payload" 2>/dev/null)
+export AR_OPT_TRUSTED_EXECUTABLE=$(jq -r '.effect.trustedExecutable // ""' <<<"$payload" 2>/dev/null)
 
 export AR_PAYLOAD=$payload
 export AR_PLUGIN_DIR=$here

@@ -462,6 +462,9 @@ Item {
     var notif = {
       key: String(n.key),
       source: String(n.source || "popup"),
+      sender: Rules.str(n.sender),
+      senderExe: Rules.str(n.senderExe),
+      senderPortal: n.senderPortal === true,
       app: Rules.str(n.app),
       summary: Rules.str(n.summary),
       body: Rules.str(n.body),
@@ -564,6 +567,14 @@ Item {
     var type = String(effect.type || "")
     if (!type) return
     effect = Rules.withDefaults(root.config, effect)
+    // Notification app names and text are caller-controlled. A command is a
+    // privileged effect, so real notifications may run it only when the
+    // authenticated sender executable exactly matches the explicit trust
+    // path configured on the effect. Tests remain an explicit user action.
+    if (type === "command" && !Rules.commandSenderTrusted(effect, notif)) {
+      root.log("blocked command effect: notification sender is not trusted")
+      return
+    }
     if (root.overlays[type]) {
       root.keepCompositing(effect)
       root.overlays[type].trigger(effect, notif, rule)
@@ -577,7 +588,9 @@ Item {
     var payload = {
       effect: effect,
       notification: {
-        key: notif.key, app: notif.app, summary: notif.summary,
+        key: notif.key, source: notif.source, sender: notif.sender,
+        senderExe: notif.senderExe, senderPortal: notif.senderPortal,
+        app: notif.app, summary: notif.summary,
         body: Rules.stripTags(notif.body), urgency: notif.urgency
       },
       rule: { name: rule.name }
